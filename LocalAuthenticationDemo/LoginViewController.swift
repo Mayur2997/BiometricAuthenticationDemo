@@ -1,5 +1,5 @@
 //
-//  ViewController.swift
+//  LoginViewController.swift
 //  LocalAuthenticationDemo
 //
 //  Created by Mayur Parmar on 26/08/20.
@@ -16,17 +16,34 @@ enum BiometricType{
     case none
 }
 
-class FaceIdTouchIdViewController: UIViewController {
+class LoginViewController: UIViewController {
     // MARK: - IBOutlet & Variables
-    @IBOutlet weak var buttonAuth: UIButton!
-     
-    let context = LAContext()
+    @IBOutlet weak var txtEmail: UITextField!
+    @IBOutlet weak var txtPassword: UITextField!
+    @IBOutlet weak var buttonLogin: UIButton!
+    @IBOutlet weak var buttonFaceIDLogin: UIButton!
      
     // MARK: - Other Method
     func showAlert(message:String) {
         let alert = UIAlertController(title: "LocalAuthentication", message: message, preferredStyle: UIAlertController.Style.alert)
         alert.addAction(UIAlertAction(title: "Ok", style: UIAlertAction.Style.default, handler: nil))
         self.present(alert, animated: true, completion: nil)
+    }
+    
+    func checkLogin() -> Bool {
+        if txtEmail.text! == "admin@gmail.com" && txtPassword.text! == "123456" {
+            return true
+        } else {
+            return false
+        }
+    }
+    
+    func isFaceIDEnable() -> Bool {
+        let userData = UserDefaults.standard.dictionary(forKey: "userData") ?? nil
+        if userData != nil {
+            return userData?["faceID"] as? Bool ?? false
+        }
+        return false
     }
     
     // detect your device.
@@ -43,7 +60,7 @@ class FaceIdTouchIdViewController: UIViewController {
         }
     }
     
-    func authenticate(){
+    func authenticate() {
         let context = LAContext()
         let reason = "use face id for Local Authentication"
         
@@ -52,7 +69,10 @@ class FaceIdTouchIdViewController: UIViewController {
             context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
                 if success {
                     DispatchQueue.main.async {
-                        self.showAlert(message: "User authenticated successfully")
+                        self.txtEmail.text = ""
+                        self.txtPassword.text = ""
+                        let vc = self.storyboard?.instantiateViewController(identifier: "HomeViewController") as! HomeViewController
+                        self.navigationController?.pushViewController(vc, animated: true)
                     }
                 }
             }
@@ -81,15 +101,16 @@ class FaceIdTouchIdViewController: UIViewController {
 
 
 // MARK: - View Life Cycle
-extension FaceIdTouchIdViewController {
+extension LoginViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
-        buttonAuth.addTarget(self, action: #selector(didTapButtonAuth), for: .touchUpInside)
         if getBiometricType() == .faceID {
-            buttonAuth.setTitle("FaceID Auth", for: .normal)
+            buttonFaceIDLogin.setTitle("Login with FaceID", for: .normal)
         } else if getBiometricType() == .touchID {
-            buttonAuth.setTitle("TouchID Auth", for: .normal)
-        }
+            buttonFaceIDLogin.setTitle("Login with TouchID", for: .normal)
+        }  
+        buttonLogin.addTarget(self, action: #selector(didTapButtonLogin), for: .touchUpInside)
+        buttonFaceIDLogin.addTarget(self, action: #selector(didTapButtonFaceID), for: .touchUpInside)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -105,10 +126,30 @@ extension FaceIdTouchIdViewController {
 
 
 //MARK:- IBAction
-extension FaceIdTouchIdViewController {
-    @objc func didTapButtonAuth() {
-        authenticate()
+extension LoginViewController {
+    @objc func didTapButtonLogin() {
+        if checkLogin() {
+            let userData = UserDefaults.standard.dictionary(forKey: "userData") ?? nil
+            if userData == nil {
+                UserDefaults.standard.set(["user" : "admin@gmail.com", "faceID" : false, "status": "active"], forKey: "userData")
+            } else {
+                var userData  = UserDefaults.standard.dictionary(forKey: "userData")
+                userData?["status"] = "active"
+                UserDefaults.standard.set(userData, forKey: "userData")
+            }
+            self.txtEmail.text = ""
+            self.txtPassword.text = ""
+            let vc = self.storyboard?.instantiateViewController(identifier: "HomeViewController") as! HomeViewController
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+    }
+    
+    @objc func didTapButtonFaceID() {
+        if isFaceIDEnable() {
+            authenticate()
+        } else {
+            self.showAlert(message: "FaceID or TouchID is disable")
+        }
     }
 }
-
 
